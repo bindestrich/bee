@@ -189,6 +189,13 @@ a.btn-claim:hover{color: #4d505b;background:rgba(255,255,255,1);text-decoration:
 a.btn-transparent{display:inline-block;color: white;font: 20px/100% "Roboto",sans-serif;line-height:130%;font-weight:300;padding:20px;border: 2px solid #fff;letter-spacing:2px;text-transform:uppercase;background:rgba(255,255,255,0);transition: all 0.4s ease 0s;}
 a.btn-transparent:hover{color: #4d505b;background:rgba(255,255,255,1);text-decoration:none; box-shadow: 0 10px 40px 0 rgba(0,0,0,.2);}
 
+.footer-contact {
+  background-image:linear-gradient(273deg, #E52721 0%, #83074E 100%);
+  box-shadow:#7F0855 0 2px 2px inset;
+  font-weight:400;
+  text-align:center;
+}
+
 /* Custom, iPhone Retina */ 
 @media only screen and (min-width : 320px) {
 }

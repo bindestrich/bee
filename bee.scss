@@ -153,3 +153,91 @@ $display3-size: 4.5 * $font-size-base;
 $display4-size: 3.5 * $font-size-base;
 
 $border-radius: .25rem;
+
+
+/*NEU */
+/*NEU */
+/*NEU */
+/*NEU */
+.wrapper-top{width:100%;max-width:1720px;margin: 0 auto;padding:0}
+/*Navigation */
+.navtop {height:130px;background-color: rgba(255,255,255,1);border-bottom:1px solid rgba(161,0,99,1.00);font-family:"proxima-nova-extra-condensed",sans-serif;font-size: 1.1em;letter-spacing: 1px;color: rgba(77,80,91,1.00);font-weight: 400;}
+.navbar-brand {padding: 0px;}
+.navtop .navbar-brand>img {padding: 0px 15px;height: 100%;width: auto}
+.navtop-sub{height: 30px;text-align: right;}
+.navtop-sub ul {list-style:none;padding-left:0}
+.navtop-sub li a {color: rgba(77,80,91,1.00);float: left;}
+.navbar-nav.nav-lang {padding-right:10px}
+.navbar-nav.nav-lang a {padding:5px 10px;vertical-align: middle;margin-right:0px;display: block;height:40px;color:#8c8c8c}
+.navbar-nav.nav-lang a:hover {text-decoration:none}
+.de a.de      {color: #4d505b}
+.en a.en      {color: #4d505b;}
+
+.navbar-bee{background: #fff;border:none;margin:10px auto 0;max-width:1720px;width:100%}
+.navbar-default .navbar-nav > li > a {color: rgba(77,80,91,1.00);}
+.navbar-default .navbar-nav .active a{background:transparent;text-decoration:underline;color: rgba(161,0,99,1.00)}
+.navbar-default .navbar-nav .active a:hover{background:transparent;text-decoration:underline;color: rgba(161,0,99,1.00)}
+.navbar-default .navbar-nav li a:hover{color: rgba(77,80,91,1.00);text-decoration:underline;}
+
+
+HEADER { height: 130px; position:relative; z-index:1000; }
+.bgimage-text {text-align: center;position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);color: white;width:90%;max-width:1720px;}
+.bgimage-text h5 {color: white;font-family:"proxima-nova-extra-condensed",sans-serif;font-size:20px;line-height:130%;font-weight:600;text-transform:none;letter-spacing:4px;}
+a.btn-claim{color: white;font: 20px/100% "Roboto",sans-serif;line-height:130%;font-weight:300;padding:10px;border: 2px solid #fff;top:30px;position:relative;letter-spacing:2px;text-transform:uppercase;background:rgba(255,255,255,0);transition: all 0.4s ease 0s;}
+a.btn-claim:hover{color: #4d505b;background:rgba(255,255,255,1);text-decoration:none; box-shadow: 0 10px 40px 0 rgba(0,0,0,.2);}
+
+a.btn-transparent{display:inline-block;color: white;font: 20px/100% "Roboto",sans-serif;line-height:130%;font-weight:300;padding:20px;border: 2px solid #fff;letter-spacing:2px;text-transform:uppercase;background:rgba(255,255,255,0);transition: all 0.4s ease 0s;}
+a.btn-transparent:hover{color: #4d505b;background:rgba(255,255,255,1);text-decoration:none; box-shadow: 0 10px 40px 0 rgba(0,0,0,.2);}
+
+/* Custom, iPhone Retina */ 
+@media only screen and (min-width : 320px) {
+}
+
+/* Extra Small Devices, Phones */ 
+@media only screen and (min-width : 480px) {
+	.bgimage-text h5 {font-size:30px;}
+}
+
+
+@media only screen and (max-width : 767px) {
+	p{text-align:center}
+	h1{text-align:center}
+}
+
+
+/* Small Devices, Tablets */
+@media only screen and (min-width : 768px) {
+	HEADER { height: 130px;}
+	.navtop {height:100px;font-size: 0.88em;}
+	.navtop .navbar-brand > img {height: 80%;width: auto;}
+	.navbar-bee{background: transparent;border:none;margin-bottom:30px;display: inline-block;}
+	.navbar-bee li a{padding:0 10px;}
+	.navtop-sub{height: 30px;text-align: right;}
+	.navbar-nav.nav-lang a {padding:10px 10px;vertical-align: middle;margin-right:0px;display: block;height:40px}
+	.bgimage-text h5 {font-size:40px;}
+	a.btn-claim{padding:20px;top:80px;}
+	.navbar-footer.address-footer.right{text-align:right}
+	.navbar-footer.address-footer.left{text-align:left}
+	.navbar-footer.address-footer.left ul{margin-left:-10px}
+	.navbar-footer.address-footer.right ul{margin-right:-10px}
+}
+
+/* Medium Devices, Desktops */
+@media only screen and (min-width : 992px) {
+	.navtop {height:130px;}
+	.navtop .navbar-brand > img {height: 100%;width: auto;}
+	.navtop {font-size: 1.1em;}
+	.navbar-bee li a{padding:0 10px;}
+	.navtop-sub{height: 60px;text-align: right;}
+	.navbar-nav.nav-lang a {padding:30px 10px;vertical-align: middle;margin-right:0px;display: block;height:40px}
+	.bgimage-text h5 {font-size:60px;}
+
+}
+/* Large Devices, Wide Screens */
+@media only screen and (min-width : 1200px) {
+	.navtop .navbar-brand > img{height: 85px;width: auto;margin-top:-50px}
+	.navbar-bee li a{padding:0 20px;}
+
+}
+
+/*Ende Navigation */

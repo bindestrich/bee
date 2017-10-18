@@ -5598,7 +5598,6 @@ body > * {
   width: 100%; }
 
 .navtop {
-  height: 130px;
   background-color: white;
   border-bottom: 1px solid #a10063;
   font-family: "proxima-nova-extra-condensed",sans-serif;
@@ -5788,11 +5787,6 @@ a.btn-transparent:hover {
 /* Medium Devices, Desktops */
 @media only screen and (min-width: 992px) {
   .navtop {
-    height: 130px; }
-  .navtop .navbar-brand > img {
-    height: 100%;
-    width: auto; }
-  .navtop {
     font-size: 1.1em; }
   .navbar-bee li a {
     padding: 0 10px; }
@@ -5810,10 +5804,6 @@ a.btn-transparent:hover {
 
 /* Large Devices, Wide Screens */
 @media only screen and (min-width: 1200px) {
-  .navtop .navbar-brand > img {
-    height: 85px;
-    width: auto;
-    margin-top: -50px; }
   .navbar-bee li a {
     padding: 0 20px; } }
 

@@ -5597,6 +5597,10 @@ body > * {
   padding: 0;
   width: 100%; }
 
+.wrapper-top .container-fluid {
+  padding-left: 0px;
+  padding-right: 0px; }
+
 .navtop {
   font-family: "proxima-nova-extra-condensed",sans-serif;
   font-size: 1.1em;

@@ -160,7 +160,12 @@ $border-radius: .25rem;
 /*NEU */
 /*NEU */
 /*Navigation */
-.navbar-wrapper{width:100%;max-width:1440px}
+.wrapper-top {
+  margin:0 auto;
+  max-width:1720px;
+  padding:0;
+  width:100%;
+}
 .navtop {height:130px;background-color: rgba(255,255,255,1);border-bottom:1px solid rgba(161,0,99,1.00);font-family:"proxima-nova-extra-condensed",sans-serif;font-size: 1.1em;letter-spacing: 1px;color: rgba(77,80,91,1.00);font-weight: 400;}
 .navbar-brand {padding: 0px;}
 .navtop .navbar-brand>img {padding: 0px 15px;height: 100%;width: auto}

@@ -5591,6 +5591,10 @@ body > * {
 /*NEU */
 /*NEU */
 /*Navigation */
+.navbar-wrapper {
+  width: 100%;
+  max-width: 1440px; }
+
 .navtop {
   height: 130px;
   background-color: white;

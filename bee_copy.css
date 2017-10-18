@@ -5591,9 +5591,11 @@ body > * {
 /*NEU */
 /*NEU */
 /*Navigation */
-.navbar-wrapper {
-  width: 100%;
-  max-width: 1440px; }
+.wrapper-top {
+  margin: 0 auto;
+  max-width: 1720px;
+  padding: 0;
+  width: 100%; }
 
 .navtop {
   height: 130px;

@@ -5602,7 +5602,8 @@ body > * {
   font-size: 1.1em;
   letter-spacing: 1px;
   color: #4d505b;
-  font-weight: 400; }
+  font-weight: 400;
+  height: 130px; }
 
 .navbar-brand {
   padding: 0px; }

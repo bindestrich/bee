@@ -5598,8 +5598,6 @@ body > * {
   width: 100%; }
 
 .navtop {
-  background-color: white;
-  border-bottom: 1px solid #a10063;
   font-family: "proxima-nova-extra-condensed",sans-serif;
   font-size: 1.1em;
   letter-spacing: 1px;

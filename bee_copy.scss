@@ -161,6 +161,7 @@ $border-radius: .25rem;
 /*NEU */
 /*Navigation */
 .wrapper-top {margin: 0 auto;max-width: 1720px;padding: 0;width: 100%;}
+.wrapper-top .container-fluid{padding-left:0px;padding-right:0px}
 .navtop {font-family:"proxima-nova-extra-condensed",sans-serif;font-size: 1.1em;letter-spacing: 1px;color: rgba(77,80,91,1.00);font-weight: 400;height:130px}
 .navbar-brand {padding: 0px;}
 .navtop .navbar-brand>img {padding: 0px 15px;height: 100%;width: auto}

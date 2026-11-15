@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Arbeitszeit</title>
+<meta name="theme-color" content="#1f6f5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Arbeitszeit">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#f4f5f2; --card:#ffffff; --text:#1c2321; --muted:#66706c; --line:#dde1dc;
+  --accent:#1f6f5c; --accent-soft:#e1efe9;
+  --drive:#2f6db5; --drive-soft:#e3ecf7;
+  --work:#1f6f5c; --work-soft:#e1efe9;
+  --pause:#b07a12; --pause-soft:#f6ecd6;
+  --danger:#b3392f; --danger-soft:#f7e2df;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#121614; --card:#1b201e; --text:#e8ece9; --muted:#9aa39f; --line:#2c3330;
+    --accent:#4fb898; --accent-soft:#1d3029;
+    --drive:#6ea3e6; --drive-soft:#1c2736;
+    --work:#4fb898; --work-soft:#1d3029;
+    --pause:#e0aa45; --pause-soft:#33291a;
+    --danger:#ec7a70; --danger-soft:#3a1f1c;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);
+  font:16px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-tap-highlight-color:transparent}
+main{max-width:640px;margin:0 auto;padding:16px 16px calc(84px + env(safe-area-inset-bottom))}
+h1{font-size:20px;margin:4px 0 12px}
+h2{font-size:16px;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.big{font-size:44px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-1px;line-height:1.1}
+.num{font-variant-numeric:tabular-nums}
+.status{display:inline-block;padding:3px 10px;border-radius:99px;font-size:13px;font-weight:600}
+.st-fahrt{background:var(--drive-soft);color:var(--drive)}
+.st-arbeit{background:var(--work-soft);color:var(--work)}
+.st-pause{background:var(--pause-soft);color:var(--pause)}
+.st-none{background:var(--line);color:var(--muted)}
+.split{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.split div{background:var(--bg);border-radius:10px;padding:8px 10px}
+.split b{display:block;font-size:18px;font-variant-numeric:tabular-nums}
+.bar{height:10px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:12px;display:flex}
+.bar span{height:100%}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+button,.btn{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--text);
+  border-radius:12px;padding:12px 14px;font:inherit;font-weight:600;cursor:pointer;text-align:center;text-decoration:none}
+button:active{transform:scale(.98)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.drive{background:var(--drive-soft);border-color:transparent;color:var(--drive)}
+button.work{background:var(--work-soft);border-color:transparent;color:var(--work)}
+button.pause{background:var(--pause-soft);border-color:transparent;color:var(--pause)}
+button.stop{background:var(--danger-soft);border-color:transparent;color:var(--danger)}
+button.on{outline:3px solid currentColor;outline-offset:-3px}
+button.sm{padding:7px 10px;font-size:14px;border-radius:9px}
+button.chip{padding:6px 12px;border-radius:99px;font-size:14px}
+button.chip.sel{background:var(--accent);color:#fff;border-color:var(--accent)}
+button:disabled{opacity:.4}
+.actions .wide{grid-column:1/-1}
+.alert{border-radius:12px;padding:12px 14px;margin-top:12px;font-weight:600}
+.alert.ok{background:var(--accent-soft);color:var(--accent)}
+.alert.warn{background:var(--pause-soft);color:var(--pause)}
+.alert.bad{background:var(--danger-soft);color:var(--danger)}
+input,select,textarea{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);
+  border-radius:9px;padding:8px 10px;max-width:100%}
+input[type=time]{min-width:0;width:100%}
+label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:7px 4px;border-bottom:1px solid var(--line);text-align:left;font-variant-numeric:tabular-nums}
+th{color:var(--muted);font-weight:600;font-size:12px}
+td.r,th.r{text-align:right}
+tr.click{cursor:pointer}
+.over{color:var(--danger);font-weight:600}
+.seg{display:grid;grid-template-columns:1fr 1fr 40px;gap:6px;align-items:center;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.seg select{width:100%;grid-column:1/3}
+.seg button{grid-column:3;grid-row:1}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);
+  display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav button{flex:1;max-width:213px;border:0;border-radius:0;background:none;padding:12px 4px;color:var(--muted);font-size:14px}
+nav button.act{color:var(--accent)}
+.hidden{display:none!important}
+dialog{border:0;border-radius:16px;padding:0;width:min(560px,calc(100vw - 24px));background:var(--card);color:var(--text)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog .inner{padding:16px}
+#report{display:none}
+
+@media print{
+  @page{size:A4 landscape;margin:12mm}
+  body{background:#fff;color:#000}
+  main,nav,dialog{display:none!important}
+  #report{display:block;font-size:11px;color:#000}
+  #report h1{font-size:16px;margin:0 0 4px}
+  #report table{font-size:10.5px}
+  #report th,#report td{border-bottom:1px solid #bbb;padding:4px 3px;color:#000}
+  #report tfoot td{font-weight:700;border-top:2px solid #000}
+  #report .sig{margin-top:40px;display:flex;gap:60px}
+  #report .sig div{border-top:1px solid #000;padding-top:4px;width:220px}
+}
+</style>
+</head>
+<body>
+<main>
+
+<!-- ============ HEUTE ============ -->
+<section id="v-heute">
+  <div class="spread"><h1 id="todayTitle">Heute</h1><span id="statusBadge" class="status st-none">nicht gestartet</span></div>
+
+  <div class="card">
+    <div class="muted small">Arbeitszeit heute (Fahrt + Store)</div>
+    <div class="big" id="totalBig">0:00</div>
+    <div class="muted small" id="totalSub">Ziel 8:30 h</div>
+    <div class="bar" id="bar"></div>
+    <div class="split">
+      <div><span class="muted small">Fahrt</span><b id="sumFahrt">0:00</b></div>
+      <div><span class="muted small">Store</span><b id="sumArbeit">0:00</b></div>
+      <div><span class="muted small">Pause</span><b id="sumPause">0:00</b></div>
+    </div>
+    <div id="alertBox"></div>
+  </div>
+
+  <div class="card">
+    <div class="actions">
+      <button class="drive" data-act="hin">🚗 Hinfahrt</button>
+      <button class="work" data-act="arbeit">🏬 Arbeit im Store</button>
+      <button class="pause" data-act="pause">☕ Pause</button>
+      <button class="drive" data-act="heim">🏠 Heimfahrt</button>
+      <button class="stop wide" data-act="ende">⏹ Feierabend / Tag beenden</button>
+    </div>
+    <p class="muted small" style="margin:10px 0 0">Antippen beendet automatisch die laufende Tätigkeit und startet die neue.</p>
+  </div>
+
+  <div class="card">
+    <h2>Heimfahrt heute einplanen</h2>
+    <div class="row" id="returnChips"></div>
+    <div class="row" style="margin-top:8px">
+      <span class="muted small">eigene Dauer:</span>
+      <input id="returnCustom" type="number" min="0" max="600" step="5" inputmode="numeric" style="width:90px" placeholder="Min.">
+      <span class="muted small">Minuten</span>
+    </div>
+    <div id="planBox" class="alert ok" style="margin-top:12px"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="sm" id="btnNotify">🔔 Benachrichtigungen erlauben</button>
+      <button class="sm" id="btnIcs">📅 Als Wecker in Kalender</button>
+    </div>
+    <p class="muted small" style="margin:8px 0 0">Die Erinnerung in der App funktioniert nur, solange die App geöffnet ist. Wenn du ganz sicher gehen willst, trag sie über „📅 Als Wecker in Kalender“ ein, dann klingelt dein Handy auch bei gesperrtem Bildschirm.</p>
+  </div>
+
+  <div class="card">
+    <label for="todayNote" style="margin-top:0">Notiz zum Tag (z. B. Store, Ort, Übernachtung)</label>
+    <input id="todayNote" type="text" style="width:100%" placeholder="z. B. Store Hamburg-Altona, Übernachtung Hotel">
+  </div>
+</section>
+
+<!-- ============ VERLAUF ============ -->
+<section id="v-verlauf" class="hidden">
+  <h1>Verlauf</h1>
+  <div class="card">
+    <div class="spread">
+      <button class="sm" id="mPrev">‹</button>
+      <b id="mTitle"></b>
+      <button class="sm" id="mNext">›</button>
+    </div>
+    <div style="overflow-x:auto;margin-top:10px">
+      <table>
+        <thead><tr><th>Tag</th><th>Von–Bis</th><th class="r">Fahrt</th><th class="r">Store</th><th class="r">Gesamt</th><th class="r">±</th></tr></thead>
+        <tbody id="mBody"></tbody>
+        <tfoot id="mFoot"></tfoot>
+      </table>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="sm" id="btnAddDay">＋ Tag nachtragen</button>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Export für diesen Monat</h2>
+    <div class="row">
+      <button class="primary" id="btnCsv">📊 Excel (CSV)</button>
+      <button class="primary" id="btnPdf">📄 PDF</button>
+    </div>
+    <p class="muted small" style="margin:8px 0 0">PDF: Im Druckdialog „Als PDF sichern“ bzw. „Speichern als PDF“ wählen.</p>
+  </div>
+</section>
+
+<!-- ============ EINSTELLUNGEN ============ -->
+<section id="v-setup" class="hidden">
+  <h1>Einstellungen</h1>
+  <div class="card">
+    <label for="sName" style="margin-top:0">Dein Name (erscheint im PDF)</label>
+    <input id="sName" type="text" style="width:100%">
+    <label for="sTarget">Max. Arbeitszeit pro Tag inkl. Fahrt (Stunden:Minuten)</label>
+    <input id="sTarget" type="time" step="300" style="width:140px">
+    <label for="sWarn">Vorwarnung (Minuten vorher)</label>
+    <input id="sWarn" type="number" min="0" max="120" step="5" style="width:100px">
+    <label for="sReturn">Standard-Heimfahrt (Minuten)</label>
+    <input id="sReturn" type="number" min="0" max="600" step="5" style="width:100px">
+    <div class="row" style="margin-top:14px"><button class="primary" id="btnSaveSettings">Speichern</button><span id="savedMsg" class="muted small"></span></div>
+  </div>
+  <div class="card">
+    <h2>Datensicherung</h2>
+    <p class="muted small" style="margin-top:0">Deine Daten liegen nur auf diesem Gerät. Wenn du den Browser-Speicher löschst oder das Handy wechselst, sind sie weg. Mach deshalb regelmäßig eine Sicherung, zum Beispiel einmal im Monat, und leg die Datei in deine Cloud oder schick sie dir per Mail.</p>
+    <div class="row">
+      <button id="btnBackup">💾 Sicherung speichern</button>
+      <button id="btnRestore">📂 Sicherung laden</button>
+      <input id="fileRestore" type="file" accept="application/json,.json" class="hidden">
+    </div>
+    <p class="muted small" id="lastBackup"></p>
+  </div>
+  <div class="card small muted">
+    <b>Hinweis zum Arbeitszeitgesetz:</b> Bei mehr als 6 Stunden sind mindestens 30 Minuten Pause vorgeschrieben, bei mehr als 9 Stunden 45 Minuten. Mehr als 10 Stunden am Tag sind nicht erlaubt. Die App rechnet Pausen nicht zur Arbeitszeit. Fahrten zum Kunden oder Store zählen im Außendienst in der Regel als Arbeitszeit. Was bei dir genau gilt, steht in deinem Arbeitsvertrag bzw. Tarifvertrag.
+  </div>
+</section>
+
+</main>
+
+<nav>
+  <button data-view="heute" class="act">⏱<br>Heute</button>
+  <button data-view="verlauf">📋<br>Verlauf</button>
+  <button data-view="setup">⚙️<br>Einstellungen</button>
+</nav>
+
+<!-- Tag bearbeiten -->
+<dialog id="dayDlg">
+  <div class="inner">
+    <div class="spread"><h2 id="dlgTitle" style="margin:0">Tag bearbeiten</h2><button class="sm" id="dlgClose">✕</button></div>
+    <label for="dlgDate">Datum</label>
+    <input id="dlgDate" type="date">
+    <label>Einträge</label>
+    <div id="dlgSegs"></div>
+    <button class="sm" id="dlgAddSeg">＋ Eintrag</button>
+    <label for="dlgNote">Notiz</label>
+    <input id="dlgNote" type="text" style="width:100%">
+    <div id="dlgSum" class="muted small" style="margin-top:10px"></div>
+    <div class="spread" style="margin-top:14px">
+      <button class="sm stop" id="dlgDelete">Tag löschen</button>
+      <button class="primary" id="dlgSave">Speichern</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Druckbericht -->
+<div id="report"></div>
+
+<script>
+"use strict";
+/* ---------------- Speicher ---------------- */
+const KEY = "arbeitszeit.v1";
+const DEFAULTS = { settings:{ name:"", targetMin:510, warnMin:15, defaultReturnMin:60 }, days:{}, lastBackup:null };
+let S = load();
+function load(){
+  try{ const raw = localStorage.getItem(KEY); if(raw){ const d = JSON.parse(raw); return {...DEFAULTS, ...d, settings:{...DEFAULTS.settings, ...d.settings}}; } }catch(e){}
+  return structuredClone(DEFAULTS);
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ alert("Speichern fehlgeschlagen: "+e.message); } }
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(()=>{});
+
+/* ---------------- Hilfsfunktionen ---------------- */
+const $ = s => document.querySelector(s);
+const pad = n => String(n).padStart(2,"0");
+const dkey = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const todayKey = () => dkey(new Date());
+const hm = ms => { const neg = ms < 0; ms = Math.abs(ms); const m = Math.round(ms/60000); return (neg?"−":"")+Math.floor(m/60)+":"+pad(m%60); };
+const clock = ts => { const d = new Date(ts); return pad(d.getHours())+":"+pad(d.getMinutes()); };
+const WD = ["So","Mo","Di","Mi","Do","Fr","Sa"];
+const MONTHS = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+const TYPE_LABEL = { fahrt:"Fahrt", arbeit:"Store", pause:"Pause" };
+const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function getDay(k, create){
+  if(!S.days[k] && create) S.days[k] = { segments:[], returnMin:null, note:"", warned:{} };
+  return S.days[k];
+}
+function openSeg(day){ return day && day.segments.find(s => !s.end); }
+function sums(day, now = Date.now()){
+  const r = { fahrt:0, arbeit:0, pause:0, start:null, end:null };
+  if(!day) return r;
+  for(const s of day.segments){
+    const e = s.end || now;
+    r[s.type] += Math.max(0, e - s.start);
+    r.start = r.start===null ? s.start : Math.min(r.start, s.start);
+    r.end = r.end===null ? e : Math.max(r.end, e);
+  }
+  r.work = r.fahrt + r.arbeit;
+  return r;
+}
+
+/* ---------------- Stempeln ---------------- */
+function act(kind){
+  const k = todayKey(), day = getDay(k, true), now = Date.now();
+  const cur = openSeg(day);
+  if(cur) cur.end = now;
+  if(kind === "ende"){ save(); render(); return; }
+  const type = kind === "hin" || kind === "heim" ? "fahrt" : kind;
+  day.segments.push({ type, dir: kind === "heim" ? "heim" : (kind === "hin" ? "hin" : undefined), start: now, end: null });
+  if(kind === "heim" && day.returnMin === null) day.returnMin = S.settings.defaultReturnMin;
+  save(); render();
+}
+document.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", () => act(b.dataset.act)));
+
+/* ---------------- Planung / Erinnerung ---------------- */
+function plan(day){
+  // Liefert: projected end of work (ms), departure time (ms), worked so far
+  const now = Date.now(), sm = sums(day, now), target = S.settings.targetMin*60000;
+  const ret = (day && day.returnMin !== null && day.returnMin !== undefined) ? day.returnMin : S.settings.defaultReturnMin;
+  const cur = openSeg(day);
+  const onHomeDrive = cur && cur.type === "fahrt" && cur.dir === "heim";
+  const running = cur && cur.type !== "pause";
+  const remaining = target - sm.work;                    // verbleibende Arbeitszeit inkl. Heimfahrt
+  const beforeLeave = onHomeDrive ? 0 : remaining - ret*60000; // Zeit, bis du losfahren musst
+  return { sm, target, ret, cur, onHomeDrive, running, remaining,
+           leaveAt: now + beforeLeave, endAt: now + remaining, beforeLeave };
+}
+
+let notifyOk = ("Notification" in window) && Notification.permission === "granted";
+async function notify(title, body){
+  try{ navigator.vibrate && navigator.vibrate([300,150,300,150,600]); }catch(e){}
+  beep();
+  if(notifyOk){
+    try{
+      const reg = await navigator.serviceWorker?.getRegistration();
+      if(reg) reg.showNotification(title, { body, icon:"icon-192.png", tag:"arbeitszeit", renotify:true, requireInteraction:true });
+      else new Notification(title, { body });
+    }catch(e){ try{ new Notification(title,{body}); }catch(_){} }
+  }
+}
+let actx;
+function beep(){
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    [0,0.35,0.7].forEach(t => { const o = actx.createOscillator(), g = actx.createGain();
+      o.frequency.value = 880; o.connect(g); g.connect(actx.destination);
+      g.gain.setValueAtTime(0.25, actx.currentTime+t); g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+t+0.3);
+      o.start(actx.currentTime+t); o.stop(actx.currentTime+t+0.3); });
+  }catch(e){}
+}
+function checkReminders(){
+  const k = todayKey(), day = getDay(k); if(!day) return;
+  const p = plan(day); if(!p.running && !(p.cur && p.cur.type==="pause")) return;
+  day.warned = day.warned || {};
+  const tag = `${S.settings.targetMin}/${p.ret}`;    // neu erinnern, wenn Plan geändert wurde
+  const warn = S.settings.warnMin*60000;
+  if(!p.onHomeDrive){
+    if(p.beforeLeave <= warn && p.beforeLeave > 0 && day.warned.pre !== tag){
+      day.warned.pre = tag; save();
+      notify("Bald Feierabend", p.ret ? `In ${Math.ceil(p.beforeLeave/60000)} Min. solltest du losfahren (Heimfahrt ${p.ret} Min.).` : `In ${Math.ceil(p.beforeLeave/60000)} Min. sind ${hm(p.target)} h erreicht.`);
+    }
+    if(p.beforeLeave <= 0 && day.warned.go !== tag){
+      day.warned.go = tag; save();
+      notify(p.ret ? "Jetzt losfahren!" : "Feierabend!", p.ret ? `Mit ${p.ret} Min. Heimfahrt erreichst du ${hm(p.target)} h.` : `Du hast ${hm(p.target)} h erreicht.`);
+    }
+  } else if(p.remaining <= 0 && day.warned.over !== tag){
+    day.warned.over = tag; save();
+    notify("Arbeitszeit erreicht", `Du bist jetzt bei ${hm(p.sm.work)} h.`);
+  }
+}
+$("#btnNotify").addEventListener("click", async () => {
+  if(!("Notification" in window)){ alert("Dieser Browser unterstützt keine Benachrichtigungen. Auf dem iPhone musst du die App erst zum Home-Bildschirm hinzufügen."); return; }
+  const r = await Notification.requestPermission(); notifyOk = r === "granted";
+  if(notifyOk) notify("Benachrichtigungen aktiv", "So sieht deine Feierabend-Erinnerung aus."); else alert("Benachrichtigungen wurden nicht erlaubt.");
+  render();
+});
+$("#btnIcs").addEventListener("click", () => {
+  const day = getDay(todayKey());
+  const p = plan(day);
+  if(!day || !p.sm.start){ alert("Starte zuerst den Tag (Hinfahrt oder Arbeit)."); return; }
+  if(p.leaveAt < Date.now()){ alert("Der Zeitpunkt liegt schon in der Vergangenheit."); return; }
+  const t = new Date(p.leaveAt);
+  const f = d => d.getUTCFullYear()+pad(d.getUTCMonth()+1)+pad(d.getUTCDate())+"T"+pad(d.getUTCHours())+pad(d.getUTCMinutes())+"00Z";
+  const title = p.ret ? `Losfahren! (Heimfahrt ${p.ret} Min.)` : "Feierabend!";
+  const ics = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Arbeitszeit//DE","BEGIN:VEVENT",
+    "UID:"+Date.now()+"@arbeitszeit","DTSTAMP:"+f(new Date()),"DTSTART:"+f(t),"DTEND:"+f(new Date(+t+5*60000)),
+    "SUMMARY:"+title,"DESCRIPTION:Arbeitszeit "+hm(p.target)+" h inkl. Fahrt erreicht.",
+    "BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:"+title,"TRIGGER:-PT"+S.settings.warnMin+"M","END:VALARM",
+    "BEGIN:VALARM","ACTION:DISPLAY","DESCRIPTION:"+title,"TRIGGER:PT0M","END:VALARM",
+    "END:VEVENT","END:VCALENDAR"].join("\r\n");
+  download(`feierabend-${todayKey()}.ics`, ics, "text/calendar");
+});
+
+/* Heimfahrt-Auswahl */
+const CHIPS = [0,30,45,60,90,120,150];
+function renderChips(day){
+  const cur = day && day.returnMin !== null && day.returnMin !== undefined ? day.returnMin : null;
+  const val = cur ?? S.settings.defaultReturnMin;
+  $("#returnChips").innerHTML = CHIPS.map(m =>
+    `<button class="chip ${val===m?"sel":""}" data-ret="${m}">${m===0?"keine (Übernachtung)":m+" Min."}</button>`).join("");
+  $("#returnChips").querySelectorAll("[data-ret]").forEach(b => b.onclick = () => setReturn(+b.dataset.ret));
+  if(document.activeElement !== $("#returnCustom")) $("#returnCustom").value = CHIPS.includes(val) ? "" : val;
+}
+function setReturn(m){ const day = getDay(todayKey(), true); day.returnMin = m; save(); render(); }
+$("#returnCustom").addEventListener("change", e => { const v = parseInt(e.target.value,10); if(v>=0) setReturn(v); });
+$("#todayNote").addEventListener("input", e => { const day = getDay(todayKey(), true); day.note = e.target.value; save(); });
+
+/* ---------------- Rendern: Heute ---------------- */
+function render(){
+  const k = todayKey(), day = getDay(k), p = plan(day), now = new Date();
+  $("#todayTitle").textContent = `${WD[now.getDay()]}, ${now.getDate()}. ${MONTHS[now.getMonth()]}`;
+  const cur = p.cur;
+  const badge = $("#statusBadge");
+  if(cur){ badge.className = "status st-"+cur.type;
+    badge.textContent = (cur.type==="fahrt" ? (cur.dir==="heim"?"Heimfahrt":"Hinfahrt") : TYPE_LABEL[cur.type]) + " seit " + clock(cur.start); }
+  else { badge.className = "status st-none"; badge.textContent = day && day.segments.length ? "Tag beendet" : "nicht gestartet"; }
+
+  $("#totalBig").textContent = hm(p.sm.work);
+  $("#totalBig").classList.toggle("over", p.sm.work > p.target);
+  $("#totalSub").textContent = `Ziel ${hm(p.target)} h · ${p.remaining>=0 ? "noch "+hm(p.remaining) : hm(-p.remaining)+" drüber"}`
+    + (p.sm.start ? ` · Beginn ${clock(p.sm.start)}` : "");
+  $("#sumFahrt").textContent = hm(p.sm.fahrt);
+  $("#sumArbeit").textContent = hm(p.sm.arbeit);
+  $("#sumPause").textContent = hm(p.sm.pause);
+  const max = Math.max(p.target, p.sm.work + p.sm.pause);
+  $("#bar").innerHTML = day ? day.segments.map(s => {
+    const w = ((s.end||Date.now()) - s.start)/max*100;
+    return `<span style="width:${w}%;background:var(--${s.type==="fahrt"?"drive":s.type==="arbeit"?"work":"pause"})"></span>`; }).join("") : "";
+
+  document.querySelectorAll("[data-act]").forEach(b => {
+    const a = b.dataset.act;
+    const on = cur && ((a==="hin" && cur.type==="fahrt" && cur.dir!=="heim") || (a==="heim" && cur.dir==="heim") || a===cur.type);
+    b.classList.toggle("on", !!on);
+    if(a==="ende") b.disabled = !cur;
+  });
+
+  // Hinweise
+  let al = "";
+  if(p.sm.work > 10*3600000) al = `<div class="alert bad">⚠️ Über 10 Stunden. Das ist nach dem Arbeitszeitgesetz die Tageshöchstgrenze.</div>`;
+  else if(p.sm.work > p.target) al = `<div class="alert bad">Du bist ${hm(p.sm.work - p.target)} über deinem Ziel.</div>`;
+  else if(p.sm.work > 6*3600000 && p.sm.pause < 30*60000) al = `<div class="alert warn">Über 6 Std. gearbeitet: mindestens 30 Min. Pause sind Pflicht (bisher ${hm(p.sm.pause)}).</div>`;
+  $("#alertBox").innerHTML = al;
+
+  renderChips(day);
+  const pb = $("#planBox");
+  if(!p.sm.start){ pb.className = "alert ok"; pb.innerHTML = `Starte den Tag mit „Hinfahrt“ (du fährst von zu Hause los) oder „Arbeit im Store“ (du bist schon vor Ort, z. B. nach einer Übernachtung).`; }
+  else if(!cur){ pb.className = "alert ok"; pb.innerHTML = `Tag beendet: ${hm(p.sm.work)} h (Fahrt ${hm(p.sm.fahrt)}, Store ${hm(p.sm.arbeit)}).`; }
+  else if(p.onHomeDrive){ pb.className = p.remaining<0 ? "alert bad":"alert ok";
+    pb.innerHTML = `Du bist auf der Heimfahrt. ${hm(p.target)} h erreichst du um <b>${clock(p.endAt)}</b>. Wenn du zu Hause bist, tipp auf „Feierabend“.`; }
+  else {
+    const late = p.beforeLeave <= 0, soon = p.beforeLeave <= S.settings.warnMin*60000;
+    pb.className = late ? "alert bad" : soon ? "alert warn" : "alert ok";
+    pb.innerHTML = p.ret
+      ? `${late?"🚨 ":""}Losfahren spätestens um <b>${clock(p.leaveAt)}</b>.<br><span class="small">Dann bist du nach ${p.ret} Min. Heimfahrt um ${clock(p.endAt)} zu Hause und hast ${hm(p.target)} h.</span>`
+      : `${late?"🚨 ":""}Feierabend um <b>${clock(p.endAt)}</b>. Keine Heimfahrt eingeplant.`;
+    if(cur.type==="pause") pb.innerHTML += `<br><span class="small">Die Pause läuft gerade und verschiebt die Zeit nach hinten.</span>`;
+  }
+  $("#btnNotify").textContent = notifyOk ? "🔔 Benachrichtigungen aktiv" : "🔔 Benachrichtigungen erlauben";
+  if(document.activeElement !== $("#todayNote")) $("#todayNote").value = day?.note || "";
+
+  if(!$("#v-verlauf").classList.contains("hidden")) renderMonth();
+}
+
+/* ---------------- Navigation ---------------- */
+document.querySelectorAll("nav [data-view]").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("nav [data-view]").forEach(x => x.classList.toggle("act", x===b));
+  ["heute","verlauf","setup"].forEach(v => $("#v-"+v).classList.toggle("hidden", v!==b.dataset.view));
+  if(b.dataset.view==="verlauf") renderMonth();
+  if(b.dataset.view==="setup") renderSettings();
+  window.scrollTo(0,0);
+}));
+
+/* ---------------- Verlauf ---------------- */
+let mY = new Date().getFullYear(), mM = new Date().getMonth();
+$("#mPrev").onclick = () => { mM--; if(mM<0){mM=11;mY--;} renderMonth(); };
+$("#mNext").onclick = () => { mM++; if(mM>11){mM=0;mY++;} renderMonth(); };
+function monthDays(){
+  const pre = `${mY}-${pad(mM+1)}-`;
+  return Object.keys(S.days).filter(k => k.startsWith(pre) && S.days[k].segments.length).sort();
+}
+function renderMonth(){
+  $("#mTitle").textContent = `${MONTHS[mM]} ${mY}`;
+  const target = S.settings.targetMin*60000;
+  const tot = { fahrt:0, arbeit:0, pause:0, work:0, diff:0 };
+  const rows = monthDays().map(k => {
+    const d = S.days[k], sm = sums(d), dt = new Date(k+"T12:00");
+    tot.fahrt+=sm.fahrt; tot.arbeit+=sm.arbeit; tot.pause+=sm.pause; tot.work+=sm.work;
+    const diff = sm.work - target; tot.diff += diff;
+    const running = openSeg(d) ? " ⏱" : "";
+    return `<tr class="click" data-day="${k}"><td>${WD[dt.getDay()]} ${dt.getDate()}.${running}</td>
+      <td>${clock(sm.start)}–${clock(sm.end)}</td><td class="r">${hm(sm.fahrt)}</td><td class="r">${hm(sm.arbeit)}</td>
+      <td class="r ${sm.work>10*3600000?"over":""}"><b>${hm(sm.work)}</b></td><td class="r ${diff>0?"over":""}">${diff>0?"+":""}${hm(diff)}</td></tr>`;
+  });
+  $("#mBody").innerHTML = rows.join("") || `<tr><td colspan="6" class="muted">Keine Einträge in diesem Monat.</td></tr>`;
+  $("#mFoot").innerHTML = rows.length ? `<tr><td colspan="2"><b>Summe (${rows.length} Tage)</b></td><td class="r">${hm(tot.fahrt)}</td>
+    <td class="r">${hm(tot.arbeit)}</td><td class="r"><b>${hm(tot.work)}</b></td><td class="r">${tot.diff>0?"+":""}${hm(tot.diff)}</td></tr>` : "";
+  $("#mBody").querySelectorAll("[data-day]").forEach(tr => tr.onclick = () => openDay(tr.dataset.day));
+}
+
+/* ---------------- Tag bearbeiten ---------------- */
+let editKey = null, editSegs = [];
+const toTime = ts => ts ? clock(ts) : "";
+function fromTime(dateKey, t, after){
+  if(!t) return null;
+  let ts = new Date(`${dateKey}T${t}`).getTime();
+  if(after && ts < after) ts += 86400000; // über Mitternacht
+  return ts;
+}
+function openDay(k){
+  editKey = k;
+  const d = S.days[k] || { segments:[], note:"" };
+  editSegs = d.segments.map(s => ({ type: s.type, dir: s.dir, start: toTime(s.start), end: toTime(s.end), open: !s.end }));
+  $("#dlgTitle").textContent = S.days[k] ? "Tag bearbeiten" : "Tag nachtragen";
+  $("#dlgDate").value = k; $("#dlgNote").value = d.note || "";
+  drawSegs(); $("#dayDlg").showModal();
+}
+function drawSegs(){
+  $("#dlgSegs").innerHTML = editSegs.map((s,i) => `<div class="seg" data-i="${i}">
+    <select data-f="kind">
+      <option value="hin" ${s.type==="fahrt"&&s.dir!=="heim"?"selected":""}>Hinfahrt</option>
+      <option value="heim" ${s.type==="fahrt"&&s.dir==="heim"?"selected":""}>Heimfahrt</option>
+      <option value="arbeit" ${s.type==="arbeit"?"selected":""}>Store</option>
+      <option value="pause" ${s.type==="pause"?"selected":""}>Pause</option>
+    </select>
+    <button class="sm" data-f="del" aria-label="Eintrag löschen">✕</button>
+    <input type="time" data-f="start" value="${s.start}" aria-label="von">
+    <input type="time" data-f="end" value="${s.end}" aria-label="bis" title="leer = läuft noch"></div>`).join("")
+    || `<p class="muted small">Noch keine Einträge.</p>`;
+  $("#dlgSegs").querySelectorAll(".seg").forEach(row => {
+    const i = +row.dataset.i;
+    row.querySelector('[data-f=kind]').onchange = e => { const v = e.target.value;
+      editSegs[i].type = (v==="hin"||v==="heim") ? "fahrt" : v; editSegs[i].dir = v==="heim"?"heim":v==="hin"?"hin":undefined; dlgSum(); };
+    row.querySelector('[data-f=start]').onchange = e => { editSegs[i].start = e.target.value; dlgSum(); };
+    row.querySelector('[data-f=end]').onchange = e => { editSegs[i].end = e.target.value; editSegs[i].open = !e.target.value; dlgSum(); };
+    row.querySelector('[data-f=del]').onclick = () => { editSegs.splice(i,1); drawSegs(); };
+  });
+  dlgSum();
+}
+function buildSegs(k){
+  let prev = null;
+  return editSegs.filter(s => s.start).map(s => {
+    const start = fromTime(k, s.start, prev); const end = s.end ? fromTime(k, s.end, start) : null;
+    prev = start; return { type:s.type, dir:s.dir, start, end };
+  });
+}
+function dlgSum(){
+  const k = $("#dlgDate").value || editKey, sm = sums({ segments: buildSegs(k) });
+  $("#dlgSum").textContent = `Fahrt ${hm(sm.fahrt)} · Store ${hm(sm.arbeit)} · Pause ${hm(sm.pause)} · Gesamt ${hm(sm.work)} h`;
+}
+$("#dlgAddSeg").onclick = () => {
+  const last = editSegs[editSegs.length-1];
+  editSegs.push({ type:"arbeit", start: last?.end || "", end:"" }); drawSegs();
+};
+$("#dlgClose").onclick = () => $("#dayDlg").close();
+$("#dlgSave").onclick = () => {
+  const k = $("#dlgDate").value; if(!k){ alert("Bitte Datum angeben."); return; }
+  const segs = buildSegs(k).sort((a,b) => a.start-b.start);
+  if(segs.some(s => s.end && s.end < s.start)){ alert("Ein Eintrag endet vor seinem Beginn."); return; }
+  const old = S.days[editKey];
+  if(k !== editKey){
+    if(S.days[k] && S.days[k].segments.length && !confirm("Für dieses Datum gibt es schon Einträge. Überschreiben?")) return;
+    delete S.days[editKey];
+  }
+  S.days[k] = { ...(old||{}), segments: segs, note: $("#dlgNote").value, returnMin: old?.returnMin ?? null, warned: old?.warned || {} };
+  save(); $("#dayDlg").close(); render(); renderMonth();
+};
+$("#dlgDelete").onclick = () => {
+  if(!S.days[editKey]){ $("#dayDlg").close(); return; }
+  if(confirm("Diesen Tag wirklich löschen?")){ delete S.days[editKey]; save(); $("#dayDlg").close(); render(); renderMonth(); }
+};
+$("#btnAddDay").onclick = () => {
+  const k = mY===new Date().getFullYear() && mM===new Date().getMonth() ? todayKey() : `${mY}-${pad(mM+1)}-01`;
+  openDay(k);
+  if(!S.days[k]) editSegs = [{type:"fahrt",dir:"hin",start:"07:00",end:"08:00"},{type:"arbeit",start:"08:00",end:"12:00"},
+    {type:"pause",start:"12:00",end:"12:30"},{type:"arbeit",start:"12:30",end:"15:00"},{type:"fahrt",dir:"heim",start:"15:00",end:"16:00"}];
+  drawSegs();
+};
+
+/* ---------------- Export ---------------- */
+function download(name, content, type){
+  const blob = content instanceof Blob ? content : new Blob([content], { type });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+const dec = ms => (ms/3600000).toFixed(2).replace(".", ",");
+function rowsForMonth(){
+  const target = S.settings.targetMin*60000;
+  return monthDays().map(k => {
+    const d = S.days[k], sm = sums(d), dt = new Date(k+"T12:00");
+    const detail = d.segments.map(s => `${s.type==="fahrt"?(s.dir==="heim"?"Heimfahrt":"Hinfahrt"):TYPE_LABEL[s.type]} ${clock(s.start)}-${s.end?clock(s.end):"läuft"}`).join(", ");
+    return { k, dt, sm, diff: sm.work - target, note: d.note||"", detail };
+  });
+}
+$("#btnCsv").onclick = () => {
+  const rows = rowsForMonth(); if(!rows.length){ alert("Keine Einträge in diesem Monat."); return; }
+  const q = v => `"${String(v).replace(/"/g,'""')}"`;
+  const head = ["Datum","Wochentag","Beginn","Ende","Fahrzeit (h:mm)","Store (h:mm)","Pause (h:mm)","Arbeitszeit gesamt (h:mm)","Arbeitszeit gesamt (Std. dezimal)","Abweichung zum Ziel (h:mm)","Einzelbuchungen","Notiz"];
+  const lines = [head.map(q).join(";")];
+  const tot = {f:0,a:0,p:0,w:0,d:0};
+  for(const r of rows){
+    tot.f+=r.sm.fahrt; tot.a+=r.sm.arbeit; tot.p+=r.sm.pause; tot.w+=r.sm.work; tot.d+=r.diff;
+    lines.push([`${pad(r.dt.getDate())}.${pad(r.dt.getMonth()+1)}.${r.dt.getFullYear()}`, WD[r.dt.getDay()], clock(r.sm.start), clock(r.sm.end),
+      hm(r.sm.fahrt), hm(r.sm.arbeit), hm(r.sm.pause), hm(r.sm.work), dec(r.sm.work), hm(r.diff).replace("−","-"), r.detail, r.note].map(q).join(";"));
+  }
+  lines.push(["Summe","","","",hm(tot.f),hm(tot.a),hm(tot.p),hm(tot.w),dec(tot.w),hm(tot.d).replace("−","-"),"",""].map(q).join(";"));
+  download(`Arbeitszeit_${mY}-${pad(mM+1)}.csv`, "﻿"+lines.join("\r\n"), "text/csv;charset=utf-8");
+};
+$("#btnPdf").onclick = () => {
+  const rows = rowsForMonth(); if(!rows.length){ alert("Keine Einträge in diesem Monat."); return; }
+  const tot = {f:0,a:0,p:0,w:0,d:0};
+  const body = rows.map(r => { tot.f+=r.sm.fahrt; tot.a+=r.sm.arbeit; tot.p+=r.sm.pause; tot.w+=r.sm.work; tot.d+=r.diff;
+    return `<tr><td>${WD[r.dt.getDay()]} ${pad(r.dt.getDate())}.${pad(r.dt.getMonth()+1)}.</td><td>${clock(r.sm.start)}</td><td>${clock(r.sm.end)}</td>
+    <td class="r">${hm(r.sm.fahrt)}</td><td class="r">${hm(r.sm.arbeit)}</td><td class="r">${hm(r.sm.pause)}</td><td class="r"><b>${hm(r.sm.work)}</b></td>
+    <td class="r">${r.diff>0?"+":""}${hm(r.diff)}</td><td>${esc(r.detail)}</td><td>${esc(r.note)}</td></tr>`; }).join("");
+  const now = new Date();
+  $("#report").innerHTML = `<h1>Arbeitszeitnachweis ${MONTHS[mM]} ${mY}</h1>
+    <div>${S.settings.name ? "Name: <b>"+esc(S.settings.name)+"</b> · " : ""}Tagesziel ${hm(S.settings.targetMin*60000)} h inkl. Fahrzeit · Pausen nicht eingerechnet · erstellt am ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} ${clock(now)}</div><br>
+    <table><thead><tr><th>Datum</th><th>Beginn</th><th>Ende</th><th class="r">Fahrt</th><th class="r">Store</th><th class="r">Pause</th><th class="r">Gesamt</th><th class="r">±Ziel</th><th>Einzelbuchungen</th><th>Notiz</th></tr></thead>
+    <tbody>${body}</tbody>
+    <tfoot><tr><td colspan="3">Summe ${rows.length} Arbeitstage</td><td class="r">${hm(tot.f)}</td><td class="r">${hm(tot.a)}</td><td class="r">${hm(tot.p)}</td><td class="r">${hm(tot.w)}</td><td class="r">${tot.d>0?"+":""}${hm(tot.d)}</td><td colspan="2"></td></tr></tfoot></table>
+    <div class="sig"><div>Datum, Unterschrift</div></div>`;
+  const old = document.title; document.title = `Arbeitszeit_${mY}-${pad(mM+1)}`;
+  window.print(); setTimeout(() => document.title = old, 1500);
+};
+
+/* ---------------- Einstellungen & Backup ---------------- */
+function renderSettings(){
+  $("#sName").value = S.settings.name;
+  $("#sTarget").value = `${pad(Math.floor(S.settings.targetMin/60))}:${pad(S.settings.targetMin%60)}`;
+  $("#sWarn").value = S.settings.warnMin; $("#sReturn").value = S.settings.defaultReturnMin;
+  $("#lastBackup").textContent = S.lastBackup ? "Letzte Sicherung: " + new Date(S.lastBackup).toLocaleString("de-DE") : "Noch keine Sicherung gemacht.";
+}
+$("#btnSaveSettings").onclick = () => {
+  const [h,m] = ($("#sTarget").value || "08:30").split(":").map(Number);
+  S.settings = { name: $("#sName").value.trim(), targetMin: h*60+m,
+    warnMin: Math.max(0, parseInt($("#sWarn").value,10)||0), defaultReturnMin: Math.max(0, parseInt($("#sReturn").value,10)||0) };
+  save(); render(); $("#savedMsg").textContent = "Gespeichert ✓"; setTimeout(() => $("#savedMsg").textContent = "", 2000);
+};
+$("#btnBackup").onclick = () => {
+  S.lastBackup = Date.now(); save();
+  download(`arbeitszeit-sicherung-${todayKey()}.json`, JSON.stringify(S, null, 1), "application/json"); renderSettings();
+};
+$("#btnRestore").onclick = () => $("#fileRestore").click();
+$("#fileRestore").onchange = async e => {
+  const f = e.target.files[0]; if(!f) return;
+  try{
+    const d = JSON.parse(await f.text());
+    if(!d.days) throw new Error("Keine gültige Sicherungsdatei.");
+    const n = Object.keys(d.days).length;
+    if(!confirm(`${n} Tage aus der Sicherung übernehmen? Tage, die es hier schon gibt, werden durch die Version aus der Sicherung ersetzt.`)) return;
+    S.days = { ...S.days, ...d.days }; S.settings = { ...S.settings, ...d.settings }; save(); render(); renderSettings();
+    alert("Sicherung geladen.");
+  }catch(err){ alert("Fehler: " + err.message); }
+  e.target.value = "";
+};
+
+/* ---------------- Start ---------------- */
+// Laufender Eintrag von gestern? Hinweis geben.
+(function(){
+  const open = Object.keys(S.days).filter(k => k !== todayKey() && openSeg(S.days[k]));
+  if(open.length) setTimeout(() => alert(`Achtung: Am ${open.map(k=>k.split("-").reverse().join(".")).join(", ")} wurde der Tag nicht beendet. Bitte im Verlauf korrigieren.`), 300);
+})();
+render();
+setInterval(() => { render(); checkReminders(); }, 15000);
+document.addEventListener("visibilitychange", () => { if(!document.hidden){ render(); checkReminders(); } });
+checkReminders();
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>

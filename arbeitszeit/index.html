@@ -129,6 +129,16 @@ input,select{font:inherit;color:var(--text);background:var(--sunk);border:1px so
 input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}
 input[type=time]{min-width:0}
 label{display:block;font-size:14px;color:var(--muted);margin:14px 0 6px;font-weight:500}
+.switch{display:flex;align-items:center;gap:14px;margin:18px 0 4px;padding:14px;background:var(--sunk);border-radius:16px;cursor:pointer;color:var(--text)}
+.switch span{flex:1;display:flex;flex-direction:column;gap:3px}
+.switch b{font-weight:600;font-size:15.5px}
+.switch small{color:var(--muted);font-size:13px;line-height:1.35}
+.switch input{position:absolute;opacity:0;width:1px;height:1px}
+.switch i{flex:none;width:50px;height:30px;border-radius:99px;background:var(--faint);position:relative;transition:background .2s}
+.switch i::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.switch input:checked + i{background:var(--accent)}
+.switch input:checked + i::after{transform:translateX(20px)}
+.switch input:focus-visible + i{outline:2px solid var(--accent);outline-offset:2px}
 .where{display:flex;align-items:center;gap:10px;color:var(--muted)}
 .where input{background:none;padding:6px 0;border-radius:0;color:var(--text)}
 .where input:focus{outline:none}
@@ -269,8 +279,12 @@ nav svg.i{width:24px;height:24px}
   <div class="card">
     <label for="sName" style="margin-top:0">Dein Name (steht im PDF)</label>
     <input id="sName" type="text" autocomplete="name">
-    <label for="sTarget">Arbeitszeit pro Tag inkl. Fahrt</label>
+    <label for="sTarget">Arbeitszeit pro Tag inkl. Fahrt, ohne Pause</label>
     <input id="sTarget" type="time" step="300">
+    <label class="switch" for="sAutoPause">
+      <span><b>Gesetzliche Pause einrechnen</b><small>Ab 6 Std. werden 30 Min. abgezogen, ab 9 Std. 45 Min. Selbst eingetragene Pausen zählen mit.</small></span>
+      <input id="sAutoPause" type="checkbox" role="switch"><i></i>
+    </label>
     <label for="sReturn">Übliche Heimfahrt (Minuten)</label>
     <input id="sReturn" type="number" min="0" max="600" step="5" inputmode="numeric">
     <label for="sWarn">Vorwarnung (Minuten vorher)</label>
@@ -327,10 +341,15 @@ nav svg.i{width:24px;height:24px}
 "use strict";
 /* ---------------- Speicher ---------------- */
 const KEY = "arbeitszeit.v1";
-const DEFAULTS = { settings:{ name:"", targetMin:510, warnMin:15, defaultReturnMin:60 }, days:{}, lastBackup:null };
+// targetMin = Arbeitszeit ohne Pause; autoPause = gesetzliche Pause automatisch berücksichtigen
+const DEFAULTS = { settings:{ name:"", targetMin:480, autoPause:true, warnMin:15, defaultReturnMin:60, v:2 }, days:{}, lastBackup:null };
 let S = load();
 function load(){
-  try{ const raw = localStorage.getItem(KEY); if(raw){ const d = JSON.parse(raw); return {...DEFAULTS, ...d, settings:{...DEFAULTS.settings, ...d.settings}}; } }catch(e){}
+  try{ const raw = localStorage.getItem(KEY); if(raw){ const d = JSON.parse(raw);
+    const st = d.settings || {};
+    // Umstellung: früher 8:30 inkl. Pause als Ziel → jetzt 8:00 Arbeitszeit + automatische Pause
+    if(!st.v){ if(st.targetMin === 510 || st.targetMin === undefined) st.targetMin = 480; st.autoPause = true; st.v = 2; }
+    return {...DEFAULTS, ...d, settings:{...DEFAULTS.settings, ...st}}; } }catch(e){}
   return structuredClone(DEFAULTS);
 }
 function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){ alert("Speichern fehlgeschlagen: "+e.message); } }
@@ -403,8 +422,29 @@ function sums(day, now = Date.now()){
     r.start = r.start===null ? s.start : Math.min(r.start, s.start);
     r.end = r.end===null ? e : Math.max(r.end, e);
   }
-  r.work = r.fahrt + r.arbeit;
+  r.gross = r.fahrt + r.arbeit;
+  r.ownPause = r.pause;
+  r.auto = pauseDeduction(r.gross, r.pause);
+  r.pause += r.auto;              // Pause inkl. automatisch abgezogener
+  r.work = r.gross - r.auto;      // Arbeitszeit netto
   return r;
+}
+// Gesetzliche Pause (ArbZG §4): über 6 Std. 30 Min., über 9 Std. 45 Min.
+// Eingetragene Pausen werden angerechnet; Abzug nie so groß, dass man unter die Schwelle fällt.
+const MIN = 60000;
+function pauseDeduction(gross, ownPause){
+  if(!S.settings.autoPause) return 0;
+  const need30 = Math.max(0, 30*MIN - ownPause), need45 = Math.max(0, 45*MIN - ownPause);
+  let d = 0;
+  if(gross > 360*MIN) d += Math.min(need30, gross - 360*MIN);
+  if(gross > 540*MIN) d += Math.min(need45 - need30, gross - 540*MIN);
+  return d;
+}
+// Wie viel Fahrt+Store-Zeit (brutto) ist nötig, damit netto das Ziel erreicht ist?
+function grossNeeded(target, ownPause){
+  let lo = 0, hi = 24*60*MIN;
+  while(hi - lo > 1000){ const mid = (lo+hi)/2; if(mid - pauseDeduction(mid, ownPause) >= target) hi = mid; else lo = mid; }
+  return hi;
 }
 
 /* ---------------- Stempeln ---------------- */
@@ -429,7 +469,7 @@ function plan(day){
   const ret = TOURS[tour].ret ? retMin(day) : 0;
   const cur = openSeg(day);
   const onHomeDrive = !!(cur && cur.type === "fahrt" && cur.dir === "heim");
-  const remaining = target - sm.work;
+  const remaining = sm.work >= target ? target - sm.work : grossNeeded(target, sm.ownPause) - sm.gross;
   const beforeLeave = onHomeDrive ? 0 : remaining - ret*60000;
   return { sm, target, ret, tour, cur, onHomeDrive, running: !!cur, remaining,
            leaveAt: now + beforeLeave, endAt: now + remaining, beforeLeave };
@@ -543,7 +583,7 @@ function render(){
   const soonEnd = p.running && !p.onHomeDrive && p.beforeLeave <= S.settings.warnMin*60000;
   ring.style.stroke = p.sm.work > p.target ? "var(--danger)" : soonEnd ? "var(--pause)" : "var(--accent)";
   $("#totalBig").textContent = hm(p.sm.work);
-  $("#totalOf").textContent = `von ${hm(p.target)} Std.`;
+  $("#totalOf").textContent = `von ${hm(p.target)} Std.` + (S.settings.autoPause ? " + Pause" : "");
 
   // Status
   const st = $("#state");
@@ -566,7 +606,8 @@ function render(){
   let al = "";
   if(p.sm.work > 10*3600000) al = `<div class="note bad">Über 10 Stunden. Mehr ist laut Arbeitszeitgesetz nicht erlaubt.</div>`;
   else if(p.sm.work > p.target) al = `<div class="note bad">${hm(p.sm.work - p.target)} Std. über deinem Ziel</div>`;
-  else if(p.sm.work > 6*3600000 && p.sm.pause < 30*60000) al = `<div class="note warn">Denk an deine Pause. Ab 6 Stunden sind 30 Min. Pflicht.</div>`;
+  else if(p.sm.auto > 0) al = `<div class="note warn">${dur(Math.round(p.sm.auto/MIN))} gesetzliche Pause automatisch abgezogen</div>`;
+  else if(!S.settings.autoPause && p.sm.work > 6*3600000 && p.sm.pause < 30*60000) al = `<div class="note warn">Denk an deine Pause. Ab 6 Stunden sind 30 Min. Pflicht.</div>`;
   $("#alertBox").innerHTML = al;
 
   // Nächster Schritt
@@ -615,8 +656,8 @@ function renderEnd(day, p){
   let cls = "", icon = p.ret ? "car" : "moon", label, big, sub;
   if(!p.sm.start){
     label = p.ret ? "Wenn du jetzt anfängst, fährst du los um" : "Wenn du jetzt anfängst, ist Feierabend um";
-    big = clock(Date.now() + (p.target - p.ret*60000));
-    sub = p.ret ? `dann ${dur(p.ret)} nach Hause` : `inkl. Fahrzeit, ohne Pausen`;
+    big = clock(Date.now() + grossNeeded(p.target, 0) - p.ret*60000);
+    sub = (p.ret ? `dann ${dur(p.ret)} nach Hause` : `inkl. Fahrzeit`) + (S.settings.autoPause ? " · Pause eingerechnet" : "");
   } else if(!cur){
     icon = "check"; label = "Heute geschafft"; big = hm(p.sm.work) + " Std.";
     sub = `Fahrt ${hm(p.sm.fahrt)} · Store ${hm(p.sm.arbeit)} · Pause ${hm(p.sm.pause)}`;
@@ -628,8 +669,8 @@ function renderEnd(day, p){
     cls = late ? "bad" : soon ? "warn" : "";
     label = p.ret ? (late ? "Du solltest schon losfahren" : "Spätestens losfahren um") : (late ? "Feierabend war um" : "Feierabend um");
     big = clock(p.leaveAt);
-    sub = p.ret ? `zu Hause ca. ${clock(p.endAt)} · dann ${hm(p.target)} Std. geschafft` : `dann hast du ${hm(p.target)} Std.`;
-    if(cur.type === "pause") sub += " · Die Pause schiebt das nach hinten.";
+    sub = p.ret ? `zu Hause ca. ${clock(p.endAt)} · dann ${hm(p.target)} Std. Arbeitszeit` : `dann hast du ${hm(p.target)} Std. Arbeitszeit`;
+    if(cur.type === "pause") sub += S.settings.autoPause ? " · Die Pause ist schon eingerechnet." : " · Die Pause schiebt das nach hinten.";
   }
   box.className = "endcard " + cls;
   box.innerHTML = `<div class="endicon">${ic(icon)}</div><div><div class="small muted">${label}</div><div class="big">${big}</div><div class="small muted">${sub}</div></div>`;
@@ -782,15 +823,15 @@ function rowsForMonth(){
 $("#btnCsv").onclick = () => {
   const rows = rowsForMonth(); if(!rows.length){ alert("In diesem Monat ist noch nichts eingetragen."); return; }
   const q = v => `"${String(v).replace(/"/g,'""')}"`;
-  const head = ["Datum","Wochentag","Tagesart","Beginn","Ende","Fahrzeit (h:mm)","Store (h:mm)","Pause (h:mm)","Arbeitszeit gesamt (h:mm)","Arbeitszeit gesamt (Std. dezimal)","Abweichung zum Ziel (h:mm)","Einzelzeiten","Ort / Notiz"];
+  const head = ["Datum","Wochentag","Tagesart","Beginn","Ende","Fahrzeit (h:mm)","Store (h:mm)","Pause (h:mm)","davon automatisch abgezogen (h:mm)","Arbeitszeit gesamt (h:mm)","Arbeitszeit gesamt (Std. dezimal)","Abweichung zum Ziel (h:mm)","Einzelzeiten","Ort / Notiz"];
   const lines = [head.map(q).join(";")];
   const tot = {f:0,a:0,p:0,w:0,d:0};
   for(const r of rows){
     tot.f+=r.sm.fahrt; tot.a+=r.sm.arbeit; tot.p+=r.sm.pause; tot.w+=r.sm.work; tot.d+=r.diff;
     lines.push([`${pad(r.dt.getDate())}.${pad(r.dt.getMonth()+1)}.${r.dt.getFullYear()}`, WD[r.dt.getDay()], r.tour, clock(r.sm.start), clock(r.sm.end),
-      hm(r.sm.fahrt), hm(r.sm.arbeit), hm(r.sm.pause), hm(r.sm.work), dec(r.sm.work), hm(r.diff).replace("−","-"), r.detail, r.note].map(q).join(";"));
+      hm(r.sm.fahrt), hm(r.sm.arbeit), hm(r.sm.pause), hm(r.sm.auto), hm(r.sm.work), dec(r.sm.work), hm(r.diff).replace("−","-"), r.detail, r.note].map(q).join(";"));
   }
-  lines.push(["Summe","","","","",hm(tot.f),hm(tot.a),hm(tot.p),hm(tot.w),dec(tot.w),hm(tot.d).replace("−","-"),"",""].map(q).join(";"));
+  lines.push(["Summe","","","","",hm(tot.f),hm(tot.a),hm(tot.p),"",hm(tot.w),dec(tot.w),hm(tot.d).replace("−","-"),"",""].map(q).join(";"));
   download(`Arbeitszeit_${mY}-${pad(mM+1)}.csv`, "﻿"+lines.join("\r\n"), "text/csv;charset=utf-8");
 };
 $("#btnPdf").onclick = () => {
@@ -802,7 +843,7 @@ $("#btnPdf").onclick = () => {
     <td class="r">${r.diff>0?"+":""}${hm(r.diff)}</td><td>${esc(r.detail)}</td><td>${esc(r.note)}</td></tr>`; }).join("");
   const now = new Date();
   $("#report").innerHTML = `<h1>Arbeitszeitnachweis ${MONTHS[mM]} ${mY}</h1>
-    <div>${S.settings.name ? "Name: <b>"+esc(S.settings.name)+"</b> · " : ""}Tagesziel ${hm(S.settings.targetMin*60000)} Std. inkl. Fahrzeit · Pausen nicht eingerechnet · erstellt am ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} ${clock(now)}</div><br>
+    <div>${S.settings.name ? "Name: <b>"+esc(S.settings.name)+"</b> · " : ""}Tagesziel ${hm(S.settings.targetMin*60000)} Std. Arbeitszeit inkl. Fahrzeit · ${S.settings.autoPause ? "gesetzliche Pause (§ 4 ArbZG) abgezogen" : "nur eingetragene Pausen abgezogen"} · erstellt am ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} ${clock(now)}</div><br>
     <table><thead><tr><th>Datum</th><th>Tagesart</th><th>Beginn</th><th>Ende</th><th class="r">Fahrt</th><th class="r">Store</th><th class="r">Pause</th><th class="r">Gesamt</th><th class="r">±Ziel</th><th>Einzelzeiten</th><th>Ort / Notiz</th></tr></thead>
     <tbody>${body}</tbody>
     <tfoot><tr><td colspan="4">Summe ${rows.length} Arbeitstage</td><td class="r">${hm(tot.f)}</td><td class="r">${hm(tot.a)}</td><td class="r">${hm(tot.p)}</td><td class="r">${hm(tot.w)}</td><td class="r">${tot.d>0?"+":""}${hm(tot.d)}</td><td colspan="2"></td></tr></tfoot></table>
@@ -844,11 +885,12 @@ function renderSettings(){
   $("#sName").value = S.settings.name;
   $("#sTarget").value = `${pad(Math.floor(S.settings.targetMin/60))}:${pad(S.settings.targetMin%60)}`;
   $("#sWarn").value = S.settings.warnMin; $("#sReturn").value = S.settings.defaultReturnMin;
+  $("#sAutoPause").checked = !!S.settings.autoPause;
   $("#lastBackup").textContent = S.lastBackup ? "Letzte Sicherung: " + new Date(S.lastBackup).toLocaleString("de-DE") : "Noch keine Sicherung gespeichert.";
 }
 $("#btnSaveSettings").onclick = () => {
   const [h,m] = ($("#sTarget").value || "08:30").split(":").map(Number);
-  S.settings = { name: $("#sName").value.trim(), targetMin: h*60+m,
+  S.settings = { ...S.settings, name: $("#sName").value.trim(), targetMin: h*60+m, autoPause: $("#sAutoPause").checked,
     warnMin: Math.max(0, parseInt($("#sWarn").value,10)||0), defaultReturnMin: Math.max(15, parseInt($("#sReturn").value,10)||60) };
   save(); render(); $("#savedMsg").textContent = "Gespeichert ✓"; setTimeout(() => $("#savedMsg").textContent = "", 2000);
 };

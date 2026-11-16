@@ -53,6 +53,11 @@ h2{font-size:16px;margin:0 0 10px}
 .split b{display:block;font-size:18px;font-variant-numeric:tabular-nums}
 .bar{height:10px;border-radius:99px;background:var(--line);overflow:hidden;margin-top:12px;display:flex}
 .bar span{height:100%}
+.tour{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tour button{text-align:left;padding:10px 12px;font-weight:600}
+.tour button small{display:block;font-weight:400;color:var(--muted);font-size:12.5px;margin-top:2px}
+.tour button .ic{display:block;font-size:17px;letter-spacing:1px;margin-bottom:2px}
+.tour button.sel{background:var(--accent-soft);border-color:var(--accent);outline:2px solid var(--accent);outline-offset:-2px}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 button,.btn{appearance:none;border:1px solid var(--line);background:var(--card);color:var(--text);
   border-radius:12px;padding:12px 14px;font:inherit;font-weight:600;cursor:pointer;text-align:center;text-decoration:none}
@@ -130,6 +135,20 @@ dialog .inner{padding:16px}
   </div>
 
   <div class="card">
+    <h2>Wie sieht dein Tag aus?</h2>
+    <div class="tour" id="tourChips"></div>
+    <div id="returnWrap">
+      <label style="margin-top:14px">Heimfahrt dauert ca.</label>
+      <div class="row" id="returnChips"></div>
+      <div class="row" style="margin-top:8px">
+        <span class="muted small">andere Dauer:</span>
+        <input id="returnCustom" type="number" min="0" max="600" step="5" inputmode="numeric" style="width:90px" placeholder="Min.">
+        <span class="muted small">Minuten</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
     <div class="actions">
       <button class="drive" data-act="hin">🚗 Hinfahrt</button>
       <button class="work" data-act="arbeit">🏬 Arbeit im Store</button>
@@ -141,14 +160,8 @@ dialog .inner{padding:16px}
   </div>
 
   <div class="card">
-    <h2>Heimfahrt heute einplanen</h2>
-    <div class="row" id="returnChips"></div>
-    <div class="row" style="margin-top:8px">
-      <span class="muted small">eigene Dauer:</span>
-      <input id="returnCustom" type="number" min="0" max="600" step="5" inputmode="numeric" style="width:90px" placeholder="Min.">
-      <span class="muted small">Minuten</span>
-    </div>
-    <div id="planBox" class="alert ok" style="margin-top:12px"></div>
+    <h2>Feierabend</h2>
+    <div id="planBox" class="alert ok" style="margin-top:0"></div>
     <div class="row" style="margin-top:10px">
       <button class="sm" id="btnNotify">🔔 Benachrichtigungen erlauben</button>
       <button class="sm" id="btnIcs">📅 Als Wecker in Kalender</button>
@@ -235,6 +248,8 @@ dialog .inner{padding:16px}
     <div class="spread"><h2 id="dlgTitle" style="margin:0">Tag bearbeiten</h2><button class="sm" id="dlgClose">✕</button></div>
     <label for="dlgDate">Datum</label>
     <input id="dlgDate" type="date">
+    <label for="dlgTour">Tagesart</label>
+    <select id="dlgTour" style="width:100%"></select>
     <label>Einträge</label>
     <div id="dlgSegs"></div>
     <button class="sm" id="dlgAddSeg">＋ Eintrag</button>
@@ -276,8 +291,27 @@ const MONTHS = ["Januar","Februar","März","April","Mai","Juni","Juli","August",
 const TYPE_LABEL = { fahrt:"Fahrt", arbeit:"Store", pause:"Pause" };
 const esc = s => String(s??"").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
+const TOURS = {
+  tag:     { ic:"🏠→🏬→🏠", name:"Tagestour",  sub:"von zu Hause hin und zurück", ret:true,  start:"hin" },
+  anreise: { ic:"🏠→🏬→🛏", name:"Anreise",    sub:"hinfahren, dort übernachten",  ret:false, start:"hin" },
+  vorort:  { ic:"🛏→🏬→🛏", name:"Vor Ort",    sub:"Übernachtung davor und danach", ret:false, start:"arbeit" },
+  abreise: { ic:"🛏→🏬→🏠", name:"Abreise",    sub:"vom Hotel, abends nach Hause", ret:true,  start:"arbeit" },
+};
+function prevDayKey(k){
+  return Object.keys(S.days).filter(x => x < k && (S.days[x].segments.length || S.days[x].tour)).sort().pop();
+}
+// Tagesart: gespeichert, sonst aus dem Vortag abgeleitet (gestern Anreise/Vor Ort → heute Abreise)
+function tourOf(k){
+  const d = S.days[k];
+  if(d && d.tour) return d.tour;
+  if(d && d.returnMin === 0) return "anreise"; // alte Daten
+  const pk = prevDayKey(k), pd = pk && S.days[pk];
+  const yesterday = dkey(new Date(new Date(k+"T12:00").getTime() - 86400000));
+  if(pk === yesterday && pd && ["anreise","vorort"].includes(tourOf(pk))) return "abreise";
+  return "tag";
+}
 function getDay(k, create){
-  if(!S.days[k] && create) S.days[k] = { segments:[], returnMin:null, note:"", warned:{} };
+  if(!S.days[k] && create) S.days[k] = { segments:[], tour: tourOf(k), returnMin:null, note:"", warned:{} };
   return S.days[k];
 }
 function openSeg(day){ return day && day.segments.find(s => !s.end); }
@@ -302,7 +336,7 @@ function act(kind){
   if(kind === "ende"){ save(); render(); return; }
   const type = kind === "hin" || kind === "heim" ? "fahrt" : kind;
   day.segments.push({ type, dir: kind === "heim" ? "heim" : (kind === "hin" ? "hin" : undefined), start: now, end: null });
-  if(kind === "heim" && day.returnMin === null) day.returnMin = S.settings.defaultReturnMin;
+  if(kind === "heim" && !TOURS[tourOf(k)].ret) day.tour = tourOf(k) === "anreise" ? "tag" : "abreise";
   save(); render();
 }
 document.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", () => act(b.dataset.act)));
@@ -311,13 +345,14 @@ document.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click",
 function plan(day){
   // Liefert: projected end of work (ms), departure time (ms), worked so far
   const now = Date.now(), sm = sums(day, now), target = S.settings.targetMin*60000;
-  const ret = (day && day.returnMin !== null && day.returnMin !== undefined) ? day.returnMin : S.settings.defaultReturnMin;
+  const tour = tourOf(todayKey());
+  const ret = !TOURS[tour].ret ? 0 : (day && day.returnMin) ? day.returnMin : S.settings.defaultReturnMin;
   const cur = openSeg(day);
   const onHomeDrive = cur && cur.type === "fahrt" && cur.dir === "heim";
   const running = cur && cur.type !== "pause";
   const remaining = target - sm.work;                    // verbleibende Arbeitszeit inkl. Heimfahrt
   const beforeLeave = onHomeDrive ? 0 : remaining - ret*60000; // Zeit, bis du losfahren musst
-  return { sm, target, ret, cur, onHomeDrive, running, remaining,
+  return { sm, target, ret, tour, cur, onHomeDrive, running, remaining,
            leaveAt: now + beforeLeave, endAt: now + remaining, beforeLeave };
 }
 
@@ -387,17 +422,22 @@ $("#btnIcs").addEventListener("click", () => {
 });
 
 /* Heimfahrt-Auswahl */
-const CHIPS = [0,30,45,60,90,120,150];
+const CHIPS = [30,45,60,90,120,150,180];
 function renderChips(day){
-  const cur = day && day.returnMin !== null && day.returnMin !== undefined ? day.returnMin : null;
-  const val = cur ?? S.settings.defaultReturnMin;
+  const tour = tourOf(todayKey());
+  $("#tourChips").innerHTML = Object.entries(TOURS).map(([id,t]) =>
+    `<button class="${tour===id?"sel":""}" data-tour="${id}"><span class="ic">${t.ic}</span>${t.name}<small>${t.sub}</small></button>`).join("");
+  $("#tourChips").querySelectorAll("[data-tour]").forEach(b => b.onclick = () => {
+    const d = getDay(todayKey(), true); d.tour = b.dataset.tour; save(); render(); });
+  $("#returnWrap").classList.toggle("hidden", !TOURS[tour].ret);
+  const val = (day && day.returnMin) ? day.returnMin : S.settings.defaultReturnMin;
   $("#returnChips").innerHTML = CHIPS.map(m =>
-    `<button class="chip ${val===m?"sel":""}" data-ret="${m}">${m===0?"keine (Übernachtung)":m+" Min."}</button>`).join("");
+    `<button class="chip ${val===m?"sel":""}" data-ret="${m}">${m} Min.</button>`).join("");
   $("#returnChips").querySelectorAll("[data-ret]").forEach(b => b.onclick = () => setReturn(+b.dataset.ret));
   if(document.activeElement !== $("#returnCustom")) $("#returnCustom").value = CHIPS.includes(val) ? "" : val;
 }
 function setReturn(m){ const day = getDay(todayKey(), true); day.returnMin = m; save(); render(); }
-$("#returnCustom").addEventListener("change", e => { const v = parseInt(e.target.value,10); if(v>=0) setReturn(v); });
+$("#returnCustom").addEventListener("change", e => { const v = parseInt(e.target.value,10); if(v>0) setReturn(v); });
 $("#todayNote").addEventListener("input", e => { const day = getDay(todayKey(), true); day.note = e.target.value; save(); });
 
 /* ---------------- Rendern: Heute ---------------- */
@@ -438,7 +478,11 @@ function render(){
 
   renderChips(day);
   const pb = $("#planBox");
-  if(!p.sm.start){ pb.className = "alert ok"; pb.innerHTML = `Starte den Tag mit „Hinfahrt“ (du fährst von zu Hause los) oder „Arbeit im Store“ (du bist schon vor Ort, z. B. nach einer Übernachtung).`; }
+  if(!p.sm.start){ pb.className = "alert ok";
+    pb.innerHTML = TOURS[p.tour].start === "hin"
+      ? `Wenn du zu Hause losfährst, tipp auf <b>🚗 Hinfahrt</b>. Die Fahrzeit zählt ab da mit.`
+      : `Du startest am Hotel. Tipp auf <b>🏬 Arbeit im Store</b>, sobald du anfängst.`;
+    if(TOURS[p.tour].ret) pb.innerHTML += `<br><span class="small">Mit ${p.ret} Min. Heimfahrt bleiben dir ${hm(p.target - p.ret*60000)} h bis zum Losfahren.</span>`; }
   else if(!cur){ pb.className = "alert ok"; pb.innerHTML = `Tag beendet: ${hm(p.sm.work)} h (Fahrt ${hm(p.sm.fahrt)}, Store ${hm(p.sm.arbeit)}).`; }
   else if(p.onHomeDrive){ pb.className = p.remaining<0 ? "alert bad":"alert ok";
     pb.innerHTML = `Du bist auf der Heimfahrt. ${hm(p.target)} h erreichst du um <b>${clock(p.endAt)}</b>. Wenn du zu Hause bist, tipp auf „Feierabend“.`; }
@@ -447,7 +491,7 @@ function render(){
     pb.className = late ? "alert bad" : soon ? "alert warn" : "alert ok";
     pb.innerHTML = p.ret
       ? `${late?"🚨 ":""}Losfahren spätestens um <b>${clock(p.leaveAt)}</b>.<br><span class="small">Dann bist du nach ${p.ret} Min. Heimfahrt um ${clock(p.endAt)} zu Hause und hast ${hm(p.target)} h.</span>`
-      : `${late?"🚨 ":""}Feierabend um <b>${clock(p.endAt)}</b>. Keine Heimfahrt eingeplant.`;
+      : `${late?"🚨 ":""}Feierabend um <b>${clock(p.endAt)}</b>.<br><span class="small">Du übernachtest vor Ort, deshalb ist keine Heimfahrt eingeplant.</span>`;
     if(cur.type==="pause") pb.innerHTML += `<br><span class="small">Die Pause läuft gerade und verschiebt die Zeit nach hinten.</span>`;
   }
   $("#btnNotify").textContent = notifyOk ? "🔔 Benachrichtigungen aktiv" : "🔔 Benachrichtigungen erlauben";
@@ -482,7 +526,7 @@ function renderMonth(){
     tot.fahrt+=sm.fahrt; tot.arbeit+=sm.arbeit; tot.pause+=sm.pause; tot.work+=sm.work;
     const diff = sm.work - target; tot.diff += diff;
     const running = openSeg(d) ? " ⏱" : "";
-    return `<tr class="click" data-day="${k}"><td>${WD[dt.getDay()]} ${dt.getDate()}.${running}</td>
+    return `<tr class="click" data-day="${k}"><td>${WD[dt.getDay()]} ${dt.getDate()}.${running}<br><span class="muted small">${TOURS[tourOf(k)].ic}</span></td>
       <td>${clock(sm.start)}–${clock(sm.end)}</td><td class="r">${hm(sm.fahrt)}</td><td class="r">${hm(sm.arbeit)}</td>
       <td class="r ${sm.work>10*3600000?"over":""}"><b>${hm(sm.work)}</b></td><td class="r ${diff>0?"over":""}">${diff>0?"+":""}${hm(diff)}</td></tr>`;
   });
@@ -507,6 +551,8 @@ function openDay(k){
   editSegs = d.segments.map(s => ({ type: s.type, dir: s.dir, start: toTime(s.start), end: toTime(s.end), open: !s.end }));
   $("#dlgTitle").textContent = S.days[k] ? "Tag bearbeiten" : "Tag nachtragen";
   $("#dlgDate").value = k; $("#dlgNote").value = d.note || "";
+  $("#dlgTour").innerHTML = Object.entries(TOURS).map(([id,t]) => `<option value="${id}">${t.name} (${t.ic})</option>`).join("");
+  $("#dlgTour").value = tourOf(k);
   drawSegs(); $("#dayDlg").showModal();
 }
 function drawSegs(){
@@ -556,7 +602,7 @@ $("#dlgSave").onclick = () => {
     if(S.days[k] && S.days[k].segments.length && !confirm("Für dieses Datum gibt es schon Einträge. Überschreiben?")) return;
     delete S.days[editKey];
   }
-  S.days[k] = { ...(old||{}), segments: segs, note: $("#dlgNote").value, returnMin: old?.returnMin ?? null, warned: old?.warned || {} };
+  S.days[k] = { ...(old||{}), segments: segs, note: $("#dlgNote").value, tour: $("#dlgTour").value, returnMin: old?.returnMin ?? null, warned: old?.warned || {} };
   save(); $("#dayDlg").close(); render(); renderMonth();
 };
 $("#dlgDelete").onclick = () => {
@@ -583,36 +629,36 @@ function rowsForMonth(){
   return monthDays().map(k => {
     const d = S.days[k], sm = sums(d), dt = new Date(k+"T12:00");
     const detail = d.segments.map(s => `${s.type==="fahrt"?(s.dir==="heim"?"Heimfahrt":"Hinfahrt"):TYPE_LABEL[s.type]} ${clock(s.start)}-${s.end?clock(s.end):"läuft"}`).join(", ");
-    return { k, dt, sm, diff: sm.work - target, note: d.note||"", detail };
+    return { k, dt, sm, diff: sm.work - target, note: d.note||"", detail, tour: TOURS[tourOf(k)].name };
   });
 }
 $("#btnCsv").onclick = () => {
   const rows = rowsForMonth(); if(!rows.length){ alert("Keine Einträge in diesem Monat."); return; }
   const q = v => `"${String(v).replace(/"/g,'""')}"`;
-  const head = ["Datum","Wochentag","Beginn","Ende","Fahrzeit (h:mm)","Store (h:mm)","Pause (h:mm)","Arbeitszeit gesamt (h:mm)","Arbeitszeit gesamt (Std. dezimal)","Abweichung zum Ziel (h:mm)","Einzelbuchungen","Notiz"];
+  const head = ["Datum","Wochentag","Tagesart","Beginn","Ende","Fahrzeit (h:mm)","Store (h:mm)","Pause (h:mm)","Arbeitszeit gesamt (h:mm)","Arbeitszeit gesamt (Std. dezimal)","Abweichung zum Ziel (h:mm)","Einzelbuchungen","Notiz"];
   const lines = [head.map(q).join(";")];
   const tot = {f:0,a:0,p:0,w:0,d:0};
   for(const r of rows){
     tot.f+=r.sm.fahrt; tot.a+=r.sm.arbeit; tot.p+=r.sm.pause; tot.w+=r.sm.work; tot.d+=r.diff;
-    lines.push([`${pad(r.dt.getDate())}.${pad(r.dt.getMonth()+1)}.${r.dt.getFullYear()}`, WD[r.dt.getDay()], clock(r.sm.start), clock(r.sm.end),
+    lines.push([`${pad(r.dt.getDate())}.${pad(r.dt.getMonth()+1)}.${r.dt.getFullYear()}`, WD[r.dt.getDay()], r.tour, clock(r.sm.start), clock(r.sm.end),
       hm(r.sm.fahrt), hm(r.sm.arbeit), hm(r.sm.pause), hm(r.sm.work), dec(r.sm.work), hm(r.diff).replace("−","-"), r.detail, r.note].map(q).join(";"));
   }
-  lines.push(["Summe","","","",hm(tot.f),hm(tot.a),hm(tot.p),hm(tot.w),dec(tot.w),hm(tot.d).replace("−","-"),"",""].map(q).join(";"));
+  lines.push(["Summe","","","","",hm(tot.f),hm(tot.a),hm(tot.p),hm(tot.w),dec(tot.w),hm(tot.d).replace("−","-"),"",""].map(q).join(";"));
   download(`Arbeitszeit_${mY}-${pad(mM+1)}.csv`, "﻿"+lines.join("\r\n"), "text/csv;charset=utf-8");
 };
 $("#btnPdf").onclick = () => {
   const rows = rowsForMonth(); if(!rows.length){ alert("Keine Einträge in diesem Monat."); return; }
   const tot = {f:0,a:0,p:0,w:0,d:0};
   const body = rows.map(r => { tot.f+=r.sm.fahrt; tot.a+=r.sm.arbeit; tot.p+=r.sm.pause; tot.w+=r.sm.work; tot.d+=r.diff;
-    return `<tr><td>${WD[r.dt.getDay()]} ${pad(r.dt.getDate())}.${pad(r.dt.getMonth()+1)}.</td><td>${clock(r.sm.start)}</td><td>${clock(r.sm.end)}</td>
+    return `<tr><td>${WD[r.dt.getDay()]} ${pad(r.dt.getDate())}.${pad(r.dt.getMonth()+1)}.</td><td>${r.tour}</td><td>${clock(r.sm.start)}</td><td>${clock(r.sm.end)}</td>
     <td class="r">${hm(r.sm.fahrt)}</td><td class="r">${hm(r.sm.arbeit)}</td><td class="r">${hm(r.sm.pause)}</td><td class="r"><b>${hm(r.sm.work)}</b></td>
     <td class="r">${r.diff>0?"+":""}${hm(r.diff)}</td><td>${esc(r.detail)}</td><td>${esc(r.note)}</td></tr>`; }).join("");
   const now = new Date();
   $("#report").innerHTML = `<h1>Arbeitszeitnachweis ${MONTHS[mM]} ${mY}</h1>
     <div>${S.settings.name ? "Name: <b>"+esc(S.settings.name)+"</b> · " : ""}Tagesziel ${hm(S.settings.targetMin*60000)} h inkl. Fahrzeit · Pausen nicht eingerechnet · erstellt am ${pad(now.getDate())}.${pad(now.getMonth()+1)}.${now.getFullYear()} ${clock(now)}</div><br>
-    <table><thead><tr><th>Datum</th><th>Beginn</th><th>Ende</th><th class="r">Fahrt</th><th class="r">Store</th><th class="r">Pause</th><th class="r">Gesamt</th><th class="r">±Ziel</th><th>Einzelbuchungen</th><th>Notiz</th></tr></thead>
+    <table><thead><tr><th>Datum</th><th>Tagesart</th><th>Beginn</th><th>Ende</th><th class="r">Fahrt</th><th class="r">Store</th><th class="r">Pause</th><th class="r">Gesamt</th><th class="r">±Ziel</th><th>Einzelbuchungen</th><th>Notiz</th></tr></thead>
     <tbody>${body}</tbody>
-    <tfoot><tr><td colspan="3">Summe ${rows.length} Arbeitstage</td><td class="r">${hm(tot.f)}</td><td class="r">${hm(tot.a)}</td><td class="r">${hm(tot.p)}</td><td class="r">${hm(tot.w)}</td><td class="r">${tot.d>0?"+":""}${hm(tot.d)}</td><td colspan="2"></td></tr></tfoot></table>
+    <tfoot><tr><td colspan="4">Summe ${rows.length} Arbeitstage</td><td class="r">${hm(tot.f)}</td><td class="r">${hm(tot.a)}</td><td class="r">${hm(tot.p)}</td><td class="r">${hm(tot.w)}</td><td class="r">${tot.d>0?"+":""}${hm(tot.d)}</td><td colspan="2"></td></tr></tfoot></table>
     <div class="sig"><div>Datum, Unterschrift</div></div>`;
   const old = document.title; document.title = `Arbeitszeit_${mY}-${pad(mM+1)}`;
   window.print(); setTimeout(() => document.title = old, 1500);

@@ -5,7 +5,14 @@ Web-App fürs Handy, die auch offline läuft. Die Daten werden nur lokal auf dem
 ## Funktionen
 - Buttons für **Hinfahrt**, **Arbeit im Store**, **Pause**, **Heimfahrt** und **Feierabend**. Ein Tipp beendet die laufende Tätigkeit und startet die neue.
 - Fahrzeit zählt als Arbeitszeit, Pausen zählen nicht.
-- **Heimfahrt einplanen** (keine/30/45/60/90/… Min.). Die App rechnet aus, wann du spätestens losfahren musst, damit du bei 8:30 h zu Hause bist.
+- **Tagesart** wählen:
+  - **Tagestour** 🏠→🏬→🏠
+  - **Anreise** 🏠→🏬→🛏
+  - **Vor Ort** 🛏→🏬→🛏
+  - **Abreise** 🛏→🏬→🏠
+
+  Nach einem Anreise- oder Vor-Ort-Tag schlägt die App automatisch „Abreise“ vor.
+- **Heimfahrtdauer** bei Tagestour/Abreise. Die App rechnet aus, wann du spätestens losfahren musst, damit du bei 8:30 h zu Hause bist.
 - Erinnerung per Ton, Vibration und Benachrichtigung, solange die App geöffnet ist.
 - Zusätzlich kannst du die Erinnerung als **Kalender-Wecker (.ics)** eintragen. Der klingelt auch bei gesperrtem Handy.
 - Verlauf pro Monat. Tage lassen sich korrigieren oder nachtragen.
